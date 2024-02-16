@@ -10,6 +10,9 @@ services:
       - redis
     networks:
       - base
+    env_file:
+      - .env
+
   redis:
     image: redis:7.0-alpine
     ports:

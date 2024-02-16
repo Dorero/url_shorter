@@ -19,18 +19,18 @@ type UrlRepository struct {
 
 func (u *UrlRepository) Create(path string) (string, error) {
 	val, err := u.Cache.Incr(context.Background(), "counter").Result()
-	id := strconv.FormatInt(val, 10)
+	url := fmt.Sprintf("/url/%s", strconv.FormatInt(val, 10))
 
 	if err != nil {
 		return "", fmt.Errorf(err.Error())
 	}
 
-	err = u.Cache.Set(context.Background(), id, path, time.Minute*7*24).Err()
+	err = u.Cache.Set(context.Background(), url, path, time.Minute*7*24).Err()
 	if err != nil {
 		return "", fmt.Errorf(err.Error())
 	}
 
-	return id, nil
+	return url, nil
 }
 
 func (u *UrlRepository) Find(id string) (string, error) {

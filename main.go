@@ -2,15 +2,17 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/redis/go-redis/v9"
 	"log"
 	"net/http"
+	"os"
 	"url_shorter/repository"
 )
 
 func main() {
 	client := redis.NewClient(&redis.Options{
-		Addr:     "redis:6379",
+		Addr:     fmt.Sprintf("%s:%s", os.Getenv("REDIS_HOST"), os.Getenv("REDIS_PORT")),
 		Password: "",
 		DB:       0,
 	})
@@ -26,7 +28,7 @@ func main() {
 		getUrl(writer, request, &repo)
 	})
 
-	addr := ":8080"
+	addr := fmt.Sprintf("%s:%s", os.Getenv("SERVER_HOST"), os.Getenv("SERVER_PORT"))
 
 	log.Printf("Server start on %s\n", addr)
 
