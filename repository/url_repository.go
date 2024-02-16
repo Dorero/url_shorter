@@ -22,12 +22,12 @@ func (u *UrlRepository) Create(path string) (string, error) {
 	id := strconv.FormatInt(val, 10)
 
 	if err != nil {
-		return "", fmt.Errorf("Internal Server Error")
+		return "", fmt.Errorf(err.Error())
 	}
 
 	err = u.Cache.Set(context.Background(), id, path, time.Minute*7*24).Err()
 	if err != nil {
-		return "", fmt.Errorf("Internal Server Error")
+		return "", fmt.Errorf(err.Error())
 	}
 
 	return id, nil
@@ -36,7 +36,7 @@ func (u *UrlRepository) Create(path string) (string, error) {
 func (u *UrlRepository) Find(id string) (string, error) {
 	url, err := u.Cache.Get(context.Background(), id).Result()
 	if err != nil {
-		return "", fmt.Errorf("Internal Server Error")
+		return "", fmt.Errorf(err.Error())
 	}
 	return url, nil
 }
