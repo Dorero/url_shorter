@@ -3,80 +3,82 @@ package main
 import (
 	"encoding/json"
 	"errors"
-	"github.com/google/uuid"
-	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
-	"url_shorter/model"
 )
 
 func TestGetUrl(t *testing.T) {
-	url := model.Url{Id: uuid.New(), Path: "http://example.com"}
-	mockRepo := &MockUrlRepository{urls: []model.Url{url}}
-	str := "/url/" + url.Id.String()
-	req, err := http.NewRequest("GET", str, nil)
+	req, err := http.NewRequest("GET", "/url/1", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	req.SetPathValue("id", url.Id.String())
-	assert.NoError(t, err)
+	req.SetPathValue("id", "1")
 
-	w := httptest.NewRecorder()
+	rr := httptest.NewRecorder()
 
-	getUrl(w, req, mockRepo)
-	assert.Equal(t, http.StatusOK, w.Code)
+	repo := MockUrlRepository{urls: map[string]string{
+		"1": "https://example.com/short",
+	}}
 
-	var result model.Url
-	err = json.NewDecoder(w.Body).Decode(&result)
+	getUrl(rr, req, &repo)
 
-	assert.NoError(t, err)
-	assert.Equal(t, url, result)
-
+	if status := rr.Code; status != http.StatusSeeOther {
+		t.Errorf("Expected status %v, got %v", http.StatusSeeOther, status)
+	}
 }
 
 func TestCreateUrl(t *testing.T) {
-	path := "http://example.com"
-	mockRepo := &MockUrlRepository{urls: []model.Url{}}
+	req, err := http.NewRequest("POST", "/url", strings.NewReader("url=https://example.com"))
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	req, err := http.NewRequest("POST", "/url", strings.NewReader("url="+path))
-	assert.NoError(t, err)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
-	w := httptest.NewRecorder()
+	rr := httptest.NewRecorder()
 
-	createUrl(w, req, mockRepo)
+	repo := MockUrlRepository{urls: map[string]string{}}
 
-	assert.Equal(t, http.StatusCreated, w.Code)
+	createUrl(rr, req, &repo)
 
-	var result model.Url
-	err = json.NewDecoder(w.Body).Decode(&result)
+	if status := rr.Code; status != http.StatusCreated {
+		t.Errorf("Expected status %v, got %v", http.StatusCreated, status)
+	}
 
-	assert.NoError(t, err)
-	assert.Equal(t, path, result.Path)
+	if contentType := rr.Header().Get("Content-Type"); contentType != "application/json" {
+		t.Errorf("Expected Content-Type %v, got %v", "application/json", contentType)
+	}
+
+	var id string
+	err = json.NewDecoder(rr.Body).Decode(&id)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if id != "1" {
+		t.Errorf("Expected %s, got %s", "1", id)
+	}
 }
 
 type MockUrlRepository struct {
-	urls []model.Url
+	urls map[string]string
 }
 
-func (m *MockUrlRepository) Find(id string) (model.Url, error) {
-	for _, v := range m.urls {
-		result, parse := uuid.Parse(id)
-
-		if parse != nil {
-			return model.Url{}, parse
-		}
-
-		if v.Id == result {
-			return v, nil
-		}
+func (m *MockUrlRepository) Find(id string) (string, error) {
+	i, ok := m.urls[id]
+	if ok {
+		return i, nil
+	} else {
+		return "nil", errors.New("not found")
 	}
-
-	return model.Url{}, errors.New("Not found")
 }
 
-func (m *MockUrlRepository) Create(path string) (model.Url, error) {
-	url := model.Url{Id: uuid.New(), Path: path}
-	m.urls = append(m.urls, url)
-	return url, nil
+func (m *MockUrlRepository) Create(path string) (string, error) {
+	l := strconv.Itoa(len(m.urls) + 1)
+	m.urls[l] = path
+	return l, nil
 }

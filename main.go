@@ -2,17 +2,20 @@ package main
 
 import (
 	"encoding/json"
+	"github.com/redis/go-redis/v9"
 	"log"
 	"net/http"
-	"url_shorter/db"
 	"url_shorter/repository"
 )
 
 func main() {
-	database := db.CreateDb()
-	defer database.Pool.Close()
+	client := redis.NewClient(&redis.Options{
+		Addr:     "localhost:6379",
+		Password: "",
+		DB:       0,
+	})
 
-	repo := repository.UrlRepository{Db: database}
+	repo := repository.UrlRepository{Cache: client}
 
 	mux := http.NewServeMux()
 
@@ -42,9 +45,7 @@ func getUrl(w http.ResponseWriter, r *http.Request, repo repository.IUrlReposito
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(url)
+	http.Redirect(w, r, url, http.StatusSeeOther)
 }
 
 func createUrl(w http.ResponseWriter, r *http.Request, repo repository.IUrlRepository) {
